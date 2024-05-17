@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ardoq Example</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+ <style>
+  svg {
+    background-color: #f8f9fa;
+  }
+  .node {
+    fill: #007bff;
+    stroke: #0056b3;
+    stroke-width: 2px;
+    cursor: pointer;
+  }
+  .node text {
+    fill: white;
+    font-size: 12px;
+  }
+ </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="mb-4">Ardoq Example</h1>
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <button class="btn btn-primary btn-block" onclick="addNode()">Add Node</button>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-danger btn-block" onclick="deleteNode()">Delete Node</button>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-success btn-block" onclick="saveDiagram()">Save Diagram</button>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-warning btn-block" onclick="loadDiagram()">Load Diagram</button>
+      </div>
+    </div>
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <label for="nodeIndexInput">Node Index:</label>
+        <input type="number" id="nodeIndexInput" class="form-control">
+      </div>
+      <div class="col-md-4">
+        <label for="newNameInput">New Name:</label>
+        <input type="text" id="newNameInput" class="form-control">
+      </div>
+      <div class="col-md-4">
+        <button id="editNodeButton" class="btn btn-info btn-block">Edit Node</button>
+      </div>
+    </div>
+    <svg width="100%" height="400"></svg>
+  </div>
+
+
+  <script>
+    let nodes = [];
+let links = [];
+
+const svg = d3.select("svg");
+
+const update = () => {
+  const node = svg.selectAll(".node")
+    .data(nodes);
+
+  node.enter().append("g")
+    .attr("class", "node")
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .on("click", (_, i) => {
+      nodes.splice(i, 1);
+      links = links.filter(l => l.source !== i && l.target !== i);
+      update();
+    })
+    .call(drag);
+
+  node.exit().remove();
+
+  node.selectAll("*").remove();
+
+  node.append("circle")
+    .attr("r", 20);
+
+  node.append("text")
+    .attr("dy", ".35em")
+    .text(d => d.name);
+
+  const link = svg.selectAll("line")
+    .data(links);
+
+  link.enter().append("line")
+    .attr("stroke", "black");
+
+  link.exit().remove();
+
+  link.attr("x1", d => nodes[d.source].x)
+    .attr("y1", d => nodes[d.source].y)
+    .attr("x2", d => nodes[d.target].x)
+    .attr("y2", d => nodes[d.target].y);
+};
+
+const addNode = () => {
+  const newNode = {
+    id: nodes.length + 1,
+    name: `Node ${nodes.length + 1}`,
+    x: Math.random() * 800 + 50,
+    y: Math.random() * 300 + 50
+  };
+  nodes.push(newNode);
+  update();
+};
+
+const deleteNode = () => {
+  if (nodes.length > 0) {
+    nodes.pop();
+    links = links.filter(l => l.source < nodes.length && l.target < nodes.length);
+    update();
+  }
+};
+
+const saveDiagram = () => {
+  const diagramData = { nodes, links };
+  localStorage.setItem('diagram', JSON.stringify(diagramData));
+  alert("Diagram saved successfully.");
+};
+
+const loadDiagram = () => {
+  const savedDiagram = localStorage.getItem('diagram');
+  if (savedDiagram) {
+    const diagramData = JSON.parse(savedDiagram);
+    nodes = diagramData.nodes;
+    links = diagramData.links;
+    update();
+    alert("Diagram loaded successfully.");
+  } else {
+    alert("No saved diagram found.");
+  }
+};
+
+const validateNodeIndex = (nodeIndex) => {
+  if (nodeIndex < 0 || nodeIndex >= nodes.length || isNaN(nodeIndex)) {
+    alert("Invalid node index. Please provide a valid node index.");
+    return false;
+  }
+  return true;
+};
+
+const editNodeProperties = (nodeIndex, newName) => {
+  if (validateNodeIndex(nodeIndex)) {
+    nodes[nodeIndex].name = newName;
+    update();
+  }
+};
+
+document.getElementById('editNodeButton').addEventListener('click', function() {
+  const nodeIndex = parseInt(document.getElementById('nodeIndexInput').value);
+  const newName = document.getElementById('newNameInput').value;
+  editNodeProperties(nodeIndex, newName);
+});
+
+const drag = d3.drag()
+  .on("start", (event, d) => {
+    d.fx = d.x;
+    d.fy = d.y;
+  })
+  .on("drag", (event, d) => {
+    d.fx = event.x;
+    d.fy = event.y;
+    d3.select(this).attr("transform", `translate(${d.fx},${d.fy})`);
+  })
+  .on("end", (event, d) => {
+    d.fx = null;
+    d.fy = null;
+  });
+
+update();
+  </script>
+</body>
+</html>
